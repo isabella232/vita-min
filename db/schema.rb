@@ -11,6 +11,7 @@
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema.define(version: 2020_10_08_190415) do
+
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "postgis"
@@ -524,7 +525,7 @@ ActiveRecord::Schema.define(version: 2020_10_08_190415) do
     t.integer "sign_in_count", default: 0, null: false
     t.boolean "suspended"
     t.string "ticket_restriction"
-    t.string "timezone", default: "Eastern Time (US & Canada)"
+    t.string "timezone", default: "America/New_York"
     t.boolean "two_factor_auth_enabled"
     t.string "uid"
     t.datetime "updated_at", precision: 6, null: false
