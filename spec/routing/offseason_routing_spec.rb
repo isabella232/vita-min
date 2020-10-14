@@ -44,11 +44,29 @@ RSpec.describe "offseason routes", type: :request do
       expect(response).to redirect_to root_path
     end
 
-    # we can still access & submit requested documents
-    # We cannot access EIP-only flow
-    # We cannot access other documents pages
-    # sanity check: are there any other controllers that might be handled differently?
-     # should we close down stimulus flow?
-     # dependents
+    it "redirects Stimulus routes to root" do
+      get stimulus_filed_recently_path
+      expect(response).to redirect_to root_path
+    end
+
+    it "redirects diy routes to root" do
+      get diy_file_yourself_path
+      expect(response).to redirect_to root_path
+    end
+
+    it "redirects /diy/token path to root" do
+      get diy_start_filing_path(token: "T0k3n")
+      expect(response).to redirect_to root_path
+    end
+
+    it "redirects /diy path to root" do
+      get diy_root_path
+      expect(response).to redirect_to root_path
+    end
+
+    it "redirects diy_check_email path to root" do
+      get "/diy/check-email"
+      expect(response).to redirect_to "/"
+    end
   end
 end
