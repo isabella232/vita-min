@@ -68,5 +68,7 @@ RSpec.describe ClientSortable, type: :controller do
         expect(assigns(:filters).values.compact).to be_empty
       end
     end
+
+    context "with a "
   end
 end

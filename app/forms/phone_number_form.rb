@@ -8,17 +8,11 @@ class PhoneNumberForm < QuestionsForm
 
   def parse_phone_numbers
     if phone_number.present?
-      unless phone_number[0] == "1" || phone_number[0..1] == "+1"
-        self.phone_number = "1#{phone_number}"
-      end
-      self.phone_number = Phonelib.parse(phone_number).sanitized
+      self.phone_number = PhoneParser.normalize(phone_number)
     end
 
     if phone_number_confirmation.present?
-      unless phone_number_confirmation[0] == "1" || phone_number_confirmation[0..1] == "+1"
-        self.phone_number_confirmation = "1#{phone_number_confirmation}"
-      end
-      self.phone_number_confirmation = Phonelib.parse(phone_number_confirmation).sanitized
+      self.phone_number_confirmation = PhoneParser.normalize(phone_number_confirmation)
     end
   end
 

@@ -67,6 +67,7 @@ module Hub
     end
 
     def save
+      return false unless valid?
       vita_partner_id = attributes_for(:intake)[:vita_partner_id]
       ActiveRecord::Base.transaction do
         @intake = Intake.create!(attributes_for(:intake).merge(
@@ -129,10 +130,7 @@ module Hub
         value = send(attr)
         next unless value.present?
 
-        unless value[0] == "1" || value[0..1] == "+1"
-          value = "1#{value}"
-        end
-        send("#{attr}=", Phonelib.parse(value).sanitized)
+        send("#{attr}=", PhoneParser.normalize(value))
       end
     end
   end
