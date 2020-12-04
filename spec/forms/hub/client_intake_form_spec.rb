@@ -3,14 +3,42 @@ require "rails_helper"
 RSpec.describe Hub::ClientIntakeForm do
 
   describe ".save" do
-    let!(:intake) { create :intake, :with_contact_info, :with_dependents }
+    let!(:intake) {
+      create :intake,
+             :with_contact_info,
+             :with_dependents,
+             email_notification_opt_in: "yes",
+             state_of_residence: "CA"
+    }
     let(:form_attributes) do
-      {   primary_first_name: intake.primary_first_name,
-          primary_last_name: intake.primary_last_name,
-          email_address: "some-valid-address@example.com",
-          email_notification_opt_in: "yes",
-          sms_notification_opt_in: "yes",
-          state_of_residence: "CA",
+      {   :primary_first_name => intake.primary_first_name,
+          :primary_last_name => intake.primary_last_name,
+          :preferred_name => intake.preferred_name,
+          :preferred_interview_language => intake.preferred_interview_language,
+          :married => intake.married,
+          :separated => intake.separated,
+          :widowed => intake.widowed,
+          :lived_with_spouse => intake.lived_with_spouse,
+          :divorced => intake.divorced,
+          :divorced_year => intake.divorced_year,
+          :separated_year => intake.separated_year,
+          :widowed_year => intake.widowed_year,
+          :email_address => intake.email_address,
+          :phone_number => intake.phone_number,
+          :sms_phone_number => intake.sms_phone_number,
+          :street_address => intake.street_address,
+          :city => intake.city,
+          :state => intake.state,
+          :zip_code => intake.zip_code,
+          :sms_notification_opt_in => intake.sms_notification_opt_in,
+          :email_notification_opt_in => intake.email_notification_opt_in,
+          :spouse_first_name => intake.spouse_first_name,
+          :spouse_last_name => intake.spouse_last_name,
+          :spouse_email_address => intake.spouse_email_address,
+          :filing_joint => intake.filing_joint,
+          :interview_timing_preference => intake.interview_timing_preference,
+          :timezone => intake.timezone,
+          :state_of_residence => intake.state_of_residence,
           dependents_attributes: {
               "0" => {
                   id: intake.dependents.first.id,
@@ -22,6 +50,21 @@ RSpec.describe Hub::ClientIntakeForm do
               }
           }
       }
+    end
+
+    context "contact preferences" do
+      context "no contact method selected" do
+        before do
+          form_attributes[:sms_notification_opt_in] = "no"
+          form_attributes[:email_notification_opt_in] = "no"
+        end
+
+        it "is invalid, with errors" do
+          form = described_class.new(intake, form_attributes)
+          form.valid?
+          expect(form.errors[:communication_preference]).to eq ["Please choose some way for us to contact you."]
+        end
+      end
     end
 
     context "with invalid form attributes" do
@@ -158,20 +201,6 @@ RSpec.describe Hub::ClientIntakeForm do
           end
         end
       end
-
-      context "when no communication preference is specified" do
-        before do
-          form_attributes[:email_notification_opt_in] = "no"
-          form_attributes[:sms_notification_opt_in] = "no"
-        end
-
-        it "pushes an attribute error" do
-          form = described_class.new(intake, form_attributes)
-          expect(form.valid?).to be false
-          expect(form.errors[:communication_preference]).to include "Please choose some way for us to contact you."
-        end
-      end
-
     end
 
     context "preferred name" do
@@ -193,32 +222,11 @@ RSpec.describe Hub::ClientIntakeForm do
         end
 
         it "uses provided name to create preferred name" do
-          described_class.new(intake, form_attributes).save
+          form = described_class.new(intake, form_attributes)
+          form.save
+          expect(form.errors).to be_blank
           expect(Client.last.preferred_name).to eq "Preferred Name"
         end
-      end
-    end
-
-    context "when some attributes on the intake are updated" do
-      let(:intake) { create :intake, :filled_out, :with_contact_info }
-      let(:form) { Hub::ClientIntakeForm.from_intake(intake, { primary_first_name: "Patty" }) }
-
-      it "updates the provided attributes" do
-        form.save
-        intake.reload
-        expect(intake.primary_first_name).to eq "Patty"
-      end
-    end
-
-    context "when updating phone numbers" do
-      let(:intake) { create :intake, :filled_out, :with_contact_info }
-      let(:form) { Hub::ClientIntakeForm.from_intake(intake, { sms_phone_number: "6105551212", phone_number: "610-555-1212" }) }
-
-      it "normalizes the numbers before saving them" do
-        form.save
-        intake.reload
-        expect(intake.sms_phone_number).to eq "+16105551212"
-        expect(intake.phone_number).to eq "+16105551212"
       end
     end
 

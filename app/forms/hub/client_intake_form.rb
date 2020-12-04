@@ -34,7 +34,6 @@ module Hub
     before_validation do
       self.sms_phone_number = PhoneParser.normalize(sms_phone_number)
       self.phone_number = PhoneParser.normalize(phone_number)
-      self.preferred_name = preferred_name.presence || "#{primary_first_name} #{primary_last_name}"
     end
     validates :primary_first_name, presence: true, allow_blank: false
     validates :primary_last_name, presence: true, allow_blank: false
@@ -48,6 +47,8 @@ module Hub
     def initialize(intake, params = {})
       @intake = intake
       super(params)
+      # parent Form class creates setters for each attribute -- must come after super
+      self.preferred_name = preferred_name.presence || "#{primary_first_name} #{primary_last_name}"
     end
 
     def dependents
@@ -61,15 +62,16 @@ module Hub
       @intake.dependents
     end
 
-    def self.from_intake(intake, params = {})
+    def self.from_intake(intake)
       attribute_keys = Attributes.new(attribute_names).to_sym
-      new(intake, existing_attributes(intake).slice(*attribute_keys).merge(params))
+      new(intake, existing_attributes(intake).slice(*attribute_keys))
     end
 
     def save
       return false unless valid?
 
-      updated_attributes = attributes_for(:intake).reject { |_k, v| v.nil? }
+      updated_attributes = attributes_for(:intake)
+
       updated_attributes[:dependents_attributes]&.map do |k, v|
         { k => formatted_dependent_attrs(v) }
       end
@@ -93,12 +95,6 @@ module Hub
       email_notification_opt_in == "yes"
     end
 
-    def at_least_one_contact_method
-      unless opted_in_email? || opted_in_sms?
-        errors.add(:communication_preference, I18n.t("forms.errors.need_one_communication_method"))
-      end
-    end
-
     def dependents_attributes_required_fields
       empty_fields = []
       attributes_for(:intake)[:dependents_attributes]&.each do |_, v|
@@ -115,11 +111,30 @@ module Hub
       end
     end
 
+    def parse_phone_numbers
+      phone_number_attrs = [:phone_number, :sms_phone_number]
+      phone_number_attrs.each do |attr|
+        value = send(attr)
+        next unless value.present?
+
+        unless value[0] == "1" || value[0..1] == "+1"
+          value = "1#{value}"
+        end
+        send("#{attr}=", Phonelib.parse(value).sanitized)
+      end
+    end
+
     def formatted_dependent_attrs(attrs)
       if attrs[:birth_date_month] && attrs[:birth_date_month] && attrs[:birth_date_year]
         attrs[:birth_date] = "#{attrs[:birth_date_year]}-#{attrs[:birth_date_month]}-#{attrs[:birth_date_day]}"
       end
       attrs.except!(:birth_date_month, :birth_date_day, :birth_date_year)
+    end
+
+    def at_least_one_contact_method
+      unless email_notification_opt_in == "yes" || sms_notification_opt_in == "yes"
+        errors.add(:communication_preference, I18n.t("forms.errors.need_one_communication_method"))
+      end
     end
   end
 end
