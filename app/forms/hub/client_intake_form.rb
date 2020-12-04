@@ -36,7 +36,10 @@ module Hub
     end
     validates :primary_first_name, presence: true, allow_blank: false
     validates :primary_last_name, presence: true, allow_blank: false
+    validates :sms_phone_number, phone: true, if: -> { sms_phone_number.present? }
+    validates :sms_phone_number, presence: true, allow_blank: false, if: -> { opted_in_sms? }
     validate :dependents_attributes_required_fields
+    validates :email_address, presence: true, allow_blank: false, 'valid_email_2/email': true
 
     def initialize(intake, params = {})
       @intake = intake
@@ -76,7 +79,16 @@ module Hub
       client_intake_attributes
     end
 
+    def calc_preferred_name
+      attributes_for(:intake)[:preferred_name].presence ||
+          "#{attributes_for(:intake)[:primary_first_name]} #{attributes_for(:intake)[:primary_last_name]}"
+    end
+
     private
+
+    def opted_in_sms?
+      sms_notification_opt_in == "yes"
+    end
 
     def dependents_attributes_required_fields
       empty_fields = []
