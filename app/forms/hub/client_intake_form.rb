@@ -29,17 +29,21 @@ module Hub
                        :filing_joint,
                        :interview_timing_preference,
                        :timezone,
+                       :state_of_residence,
                        :dependents_attributes
     before_validation do
       self.sms_phone_number = PhoneParser.normalize(sms_phone_number)
       self.phone_number = PhoneParser.normalize(phone_number)
+      self.preferred_name = preferred_name.presence || "#{primary_first_name} #{primary_last_name}"
     end
     validates :primary_first_name, presence: true, allow_blank: false
     validates :primary_last_name, presence: true, allow_blank: false
     validates :sms_phone_number, phone: true, if: -> { sms_phone_number.present? }
     validates :sms_phone_number, presence: true, allow_blank: false, if: -> { opted_in_sms? }
-    validate :dependents_attributes_required_fields
     validates :email_address, presence: true, allow_blank: false, 'valid_email_2/email': true
+    validates :state_of_residence, inclusion: { in: States.keys }
+    validate :at_least_one_contact_method
+    validate :dependents_attributes_required_fields
 
     def initialize(intake, params = {})
       @intake = intake
@@ -79,15 +83,20 @@ module Hub
       client_intake_attributes
     end
 
-    def calc_preferred_name
-      attributes_for(:intake)[:preferred_name].presence ||
-          "#{attributes_for(:intake)[:primary_first_name]} #{attributes_for(:intake)[:primary_last_name]}"
-    end
-
     private
 
     def opted_in_sms?
       sms_notification_opt_in == "yes"
+    end
+
+    def opted_in_email?
+      email_notification_opt_in == "yes"
+    end
+
+    def at_least_one_contact_method
+      unless opted_in_email? || opted_in_sms?
+        errors.add(:communication_preference, I18n.t("forms.errors.need_one_communication_method"))
+      end
     end
 
     def dependents_attributes_required_fields

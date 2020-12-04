@@ -8,6 +8,9 @@ RSpec.describe Hub::ClientIntakeForm do
       {   primary_first_name: intake.primary_first_name,
           primary_last_name: intake.primary_last_name,
           email_address: "some-valid-address@example.com",
+          email_notification_opt_in: "yes",
+          sms_notification_opt_in: "yes",
+          state_of_residence: "CA",
           dependents_attributes: {
               "0" => {
                   id: intake.dependents.first.id,
@@ -42,7 +45,7 @@ RSpec.describe Hub::ClientIntakeForm do
         it "is not valid, has error" do
           form = described_class.new(intake, form_attributes)
           expect(form.valid?).to eq false
-          expect(form.errors[:primary_last_name]).to eq ["Please enter your  name."]
+          expect(form.errors[:primary_last_name]).to eq ["Please enter your last name."]
         end
       end
 
@@ -96,40 +99,40 @@ RSpec.describe Hub::ClientIntakeForm do
             form = described_class.new(intake, form_attributes)
             expect(form.valid?).to eq true
             expect(form.errors[:sms_phone_number]).to match_array([])
-            expect(form.sms_phone_number).to eq "15005550006"
+            expect(form.sms_phone_number).to eq "+15005550006"
           end
         end
       end
 
-      # context "state_of_residence" do
-      #   context "when state_of_residence is not provided" do
-      #     before do
-      #       form_attributes[:state_of_residence] = nil
-      #     end
-      #
-      #     it "is not valid" do
-      #       expect(described_class.new(intake, form_attributes).valid?).to eq false
-      #     end
-      #
-      #     it "adds an error to the attribute" do
-      #       form = described_class.new(intake, form_attributes)
-      #       form.valid?
-      #       expect(form.errors[:state_of_residence]).to eq ["Please select a state from the list."]
-      #     end
-      #   end
-      #
-      #   context "when state_of_residence is not in list" do
-      #     before do
-      #       form_attributes[:state_of_residence] = "France"
-      #     end
-      #
-      #     it "adds an error to the attribute" do
-      #       form = described_class.new(intake, form_attributes)
-      #       form.valid?
-      #       expect(form.errors[:state_of_residence]).to eq ["Please select a state from the list."]
-      #     end
-      #   end
-      # end
+      context "state_of_residence" do
+        context "when state_of_residence is not provided" do
+          before do
+            form_attributes[:state_of_residence] = nil
+          end
+
+          it "is not valid" do
+            expect(described_class.new(intake, form_attributes).valid?).to eq false
+          end
+
+          it "adds an error to the attribute" do
+            form = described_class.new(intake, form_attributes)
+            form.valid?
+            expect(form.errors[:state_of_residence]).to eq ["Please select a state from the list."]
+          end
+        end
+
+        context "when state_of_residence is not in list" do
+          before do
+            form_attributes[:state_of_residence] = "France"
+          end
+
+          it "adds an error to the attribute" do
+            form = described_class.new(intake, form_attributes)
+            form.valid?
+            expect(form.errors[:state_of_residence]).to eq ["Please select a state from the list."]
+          end
+        end
+      end
 
       context "email_address" do
         context "when provided but not valid" do
@@ -156,16 +159,30 @@ RSpec.describe Hub::ClientIntakeForm do
         end
       end
 
+      context "when no communication preference is specified" do
+        before do
+          form_attributes[:email_notification_opt_in] = "no"
+          form_attributes[:sms_notification_opt_in] = "no"
+        end
+
+        it "pushes an attribute error" do
+          form = described_class.new(intake, form_attributes)
+          expect(form.valid?).to be false
+          expect(form.errors[:communication_preference]).to include "Please choose some way for us to contact you."
+        end
+      end
+
     end
 
     context "preferred name" do
       context "when blank" do
         before do
+          intake.update(preferred_name: "")
           form_attributes[:preferred_name] = nil
         end
 
         it "uses legal name to create preferred name" do
-          described_class.new(form_attributes).save
+          described_class.new(intake, form_attributes).save
           expect(Client.last.preferred_name).to eq form_attributes[:primary_first_name] + " " + form_attributes[:primary_last_name]
         end
       end
@@ -176,7 +193,7 @@ RSpec.describe Hub::ClientIntakeForm do
         end
 
         it "uses provided name to create preferred name" do
-          described_class.new(form_attributes).save
+          described_class.new(intake, form_attributes).save
           expect(Client.last.preferred_name).to eq "Preferred Name"
         end
       end
