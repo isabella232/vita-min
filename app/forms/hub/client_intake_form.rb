@@ -30,9 +30,14 @@ module Hub
                        :interview_timing_preference,
                        :timezone,
                        :dependents_attributes
+    before_validation :parse_phone_numbers
+
     validates :primary_first_name, presence: true, allow_blank: false
     validates :primary_last_name, presence: true, allow_blank: false
+    validates :sms_phone_number, phone: true, if: -> { sms_phone_number.present? }
+    validates :sms_phone_number, presence: true, allow_blank: false, if: -> { opted_in_sms? }
     validate :dependents_attributes_required_fields
+    validates :email_address, presence: true, allow_blank: false, 'valid_email_2/email': true
 
     def initialize(intake, params = {})
       @intake = intake
@@ -72,7 +77,16 @@ module Hub
       client_intake_attributes
     end
 
+    def calc_preferred_name
+      attributes_for(:intake)[:preferred_name].presence ||
+          "#{attributes_for(:intake)[:primary_first_name]} #{attributes_for(:intake)[:primary_last_name]}"
+    end
+
     private
+
+    def opted_in_sms?
+      sms_notification_opt_in == "yes"
+    end
 
     def dependents_attributes_required_fields
       empty_fields = []
@@ -87,6 +101,19 @@ module Hub
       if empty_fields.present?
         error_message = I18n.t("forms.errors.dependents", attrs: empty_fields.uniq.map { |field| I18n.t("forms.errors.dependents_attributes.#{field}") }.join(", "))
         errors.add(:dependents_attributes, error_message)
+      end
+    end
+
+    def parse_phone_numbers
+      phone_number_attrs = [:phone_number, :sms_phone_number]
+      phone_number_attrs.each do |attr|
+        value = send(attr)
+        next unless value.present?
+
+        unless value[0] == "1" || value[0..1] == "+1"
+          value = "1#{value}"
+        end
+        send("#{attr}=", Phonelib.parse(value).sanitized)
       end
     end
 
