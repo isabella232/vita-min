@@ -5,5 +5,6 @@ module Questions
     def method_name
       "received_homebuyer_credit"
     end
+
   end
 end
