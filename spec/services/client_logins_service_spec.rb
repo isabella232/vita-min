@@ -2,6 +2,7 @@ require "rails_helper"
 
 describe ClientLoginsService do
   before do
+    allow(SecureRandom).to receive(:random_number).and_return(0.000004)
     allow(Devise.token_generator).to receive(:generate).and_return(["raw_token", "hashed_token"])
   end
 
@@ -13,6 +14,23 @@ describe ClientLoginsService do
         expect(Devise.token_generator).to have_received(:generate).with(EmailAccessToken, :token)
         expect(result).to eq "raw_token"
       end.to change(EmailAccessToken, :count).by(1)
+      token = EmailAccessToken.last
+      expect(token.email_address).to eq "someone@example.com"
+      expect(token.token).to eq "hashed_token"
+    end
+  end
+
+  describe ".issue_email_verification_code" do
+    before do
+      allow(Devise.token_generator).to receive(:digest).with(EmailAccessToken, :verification_code, "000004").and_return("hashed_token")
+    end
+
+    it "generates a new verification code, saves it, and returns it" do
+      expect do
+        result = described_class.issue_email_verification_code("someone@example.com")
+        expect(result).to eq "000004"
+      end.to change(EmailAccessToken, :count).by(1)
+      expect(Devise.token_generator).to have_received(:digest).with(EmailAccessToken, :verification_code, "000004")
       token = EmailAccessToken.last
       expect(token.email_address).to eq "someone@example.com"
       expect(token.token).to eq "hashed_token"

@@ -1,5 +1,12 @@
 class ClientLoginsService
   class << self
+    def issue_email_verification_code(email_address)
+      raw_token = "%06d" % Integer(SecureRandom.random_number * 1_000_000)
+      hashed_token = Devise.token_generator.digest(EmailAccessToken, :verification_code, raw_token)
+      EmailAccessToken.create!(token: hashed_token, email_address: email_address)
+      raw_token
+    end
+
     def issue_email_token(email_address)
       raw_token, hashed_token = Devise.token_generator.generate(EmailAccessToken, :token)
       EmailAccessToken.create!(token: hashed_token, email_address: email_address)
