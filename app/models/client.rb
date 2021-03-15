@@ -192,6 +192,12 @@ class Client < ApplicationRecord
     Client.after_consent.where(intake: matching_intakes).pluck(:id)
   end
 
+  # We'll consider a client to have completed intake process once any of their
+  # tax returns has passed the intake stage
+  def completed_intake_process?
+    tax_returns.map(&:status_before_type_cast).any? { |status| status >= 200 }
+  end
+
   private
 
   def tax_return_assigned_user_access_maintained
